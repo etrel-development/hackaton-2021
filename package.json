@@ -4,8 +4,8 @@
   "description": "Emulates OCPP 1.6 Central system and chargepoint client",
   "main": "ocpp-central-cystem-server.js",
   "scripts": {
-    "centralsystem": "node ocpp-central-cystem-server.js",
-    "chargepoint": "node ocpp-chargepoint-client.js"
+    "server": "node ocpp-central-cystem-server.js",
+    "client": "node ocpp-chargepoint-client.js"
   },
   "author": "mitja.gustin@etrel.si",
   "license": "ISC",

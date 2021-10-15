@@ -32,6 +32,13 @@ Open shell in root folder and start client
 node ocpp-chargepoint-client.js
 ```
 
+### Environment variables that client script uses
+
+1. **CS_PROTOCOL** defaults to **ws**. possible values are: ws, wss (for SSL)
+2. **CS_HOST** defaults to **localhost**. host to connect to
+3. **CS_PORT** defaults to **8080**. port to connect to
+
+
 ### Some general info on inner flow
 
 1. When client connects with websocket, it sends boot notification. 
