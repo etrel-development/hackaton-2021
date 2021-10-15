@@ -1,0 +1,14 @@
+{
+  "name": "Starfish.Websockets.Emulator",
+  "version": "1.0.0",
+  "description": "Emulates OCPP 1.6 Central system",
+  "main": "upgradeServer.js",
+  "scripts": {
+    "start": "upgradeServer.js"
+  },
+  "author": "mitja.gustin@etrel.si",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^7.4.5"
+  }
+}
