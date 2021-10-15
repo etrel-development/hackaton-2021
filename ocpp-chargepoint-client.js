@@ -34,7 +34,12 @@ WebSocketClient.prototype.open = function(url) {
 
     this.url = url;
     this.instance = new WebSocket(URL, ['ocpp1.6'], {
-        handshakeTimeout: OPENING_HANDSHAKE_TIMEOUT_MS
+        handshakeTimeout: OPENING_HANDSHAKE_TIMEOUT_MS,
+
+        // If the `rejectUnauthorized` option is not `false`, the server certificate
+        // is verified against a list of well-known CAs. An 'error' event is emitted
+        // if verification fails.
+        rejectUnauthorized: false
     });
 
     // NOTE: we are not using ping / pong functionality on our
@@ -191,10 +196,9 @@ WebSocketClient.prototype.onclose = function(e) { console.log("WebSocketClient: 
 
 // create a client
 var wsc = new WebSocketClient();
-
 console.log("Trying to connect to: " + URL);
-
 wsc.open(URL);
+
 wsc.onopen = function(e) {
     console.log("WebSocketClient connected:", e);
 }
