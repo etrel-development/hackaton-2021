@@ -37,7 +37,7 @@ node ocpp-chargepoint-client.js
 1. **CS_PROTOCOL** defaults to **ws**. possible values are: ws, wss (for SSL)
 2. **CS_HOST** defaults to **localhost**. host to connect to
 3. **CS_PORT** defaults to **8080**. port to connect to
-
+4. **CONCURRENCY_LEVEL** defaults to 1. Number of clients to create
 
 ### Some general info on inner flow
 
