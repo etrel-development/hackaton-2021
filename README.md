@@ -12,25 +12,32 @@ npm install
 
 ##  Start server
 
-Open shell (cmd.exe) in root folder and start server
+Open shell in root folder and start server
 
 ```bash
 node ocpp-central-cystem-server.js
 ```
 
-### Some general info
+### Some general info on inner flow
 
 1. Servers accepts client conections and upgrades them to websocket protocol
-2. It respons to various OCPP messages
-3. Ocasionally it send PING / PONG to determin which clients are still alive
+2. It responds to various OCPP messages
+3. Ocasionally it send PING / PONG to determine which clients are still alive
 
 ##  Starting  clients
 
-Open shell (cmd.exe) in root folder and start client
+Open shell in root folder and start client
 
 ```bash
 node ocpp-chargepoint-client.js
 ```
+
+### Environment variables that client script uses
+
+1. **CS_PROTOCOL** defaults to **ws**. possible values are: ws, wss (for SSL)
+2. **CS_HOST** defaults to **localhost**. host to connect to
+3. **CS_PORT** defaults to **8080**. port to connect to
+
 
 ### Some general info on inner flow
 
@@ -55,6 +62,20 @@ node --inspect-brk ocpp-chargepoint-client.js
 ```
 
 4. After a few seconds you should see Target upgradeServer.js on your chrome tab. Click on inspect link and new DevTools window will appear with source code.
+
+# Using utility scripts
+
+## To start server
+
+```bash
+npm run start-server
+```
+
+## To start client
+
+```bash
+npm run start-client
+```
 
 # Literature
 

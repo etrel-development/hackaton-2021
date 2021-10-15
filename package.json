@@ -1,10 +1,11 @@
 {
-  "name": "Starfish.Websockets.Emulator",
+  "name": "Etrel.OCPP.Emulator",
   "version": "1.0.0",
-  "description": "Emulates OCPP 1.6 Central system",
-  "main": "upgradeServer.js",
+  "description": "Emulates OCPP 1.6 Central system and chargepoint client",
+  "main": "ocpp-central-cystem-server.js",
   "scripts": {
-    "start": "upgradeServer.js"
+    "server": "node ocpp-central-cystem-server.js",
+    "client": "node ocpp-chargepoint-client.js"
   },
   "author": "mitja.gustin@etrel.si",
   "license": "ISC",
