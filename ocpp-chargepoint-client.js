@@ -12,7 +12,7 @@ const OCPP_HEARTBEAT_INTERVAL_OVERRIDE_MS = null; //  override hb interval set b
 const CS_PROTOCOL = process.env.CS_PROTOCOL ? process.env.CS_PROTOCOL : "ws"; // use wss for SSL
 const CS_HOST = process.env.CS_HOST ? process.env.CS_HOST : "localhost";  // central system host
 const CS_PORT = process.env.CS_PORT ? process.env.CS_PORT : 8080;  // port
-const CONCURRENCY_LEVEL = process.env.CONCURRENCY_LEVEL ? process.env.CONCURRENCY_LEVEL : 1;  // one client by default
+const CONCURRENCY_LEVEL = process.env.CONCURRENCY_LEVEL ? process.env.CONCURRENCY_LEVEL : 2;  // one client by default
 
 function uuidv4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -57,7 +57,7 @@ WebSocketClient.prototype.open = function(url) {
         this.pingTimeout = setTimeout(() => {
             debugger;
             console.log(that.clientId +  " - Disconected from server");
-            that.terminate();
+            this.terminate();
         }, 30000 + 1000);
     });
 
@@ -83,7 +83,7 @@ WebSocketClient.prototype.open = function(url) {
         };
 
         let bootNotifiPayload = JSON.stringify([CONSTANTS.OcppCallType.ClientToServer, that.msgId(), "BootNotification", bootNotificationRequest]);
-        console.log('\x1b[33m%s\x1b[0m', "Sending no." + this.ocppMessageCounter + " data to CS: " + bootNotifiPayload);
+        console.log("Sending data to CS: " + bootNotifiPayload);
 
         //debugger;
         // this is websocket object  (this.instance) and not our WebSocketClient prototype!!
@@ -94,7 +94,7 @@ WebSocketClient.prototype.open = function(url) {
     this.instance.on('message', function incoming(data) {
         //debugger; 
         
-        console.log('\x1b[33m%s\x1b[0m', "Message received: ");
+        console.log("Message received: ");
         console.log(data);
         
         let msgArr = JSON.parse(data);
@@ -127,19 +127,19 @@ WebSocketClient.prototype.open = function(url) {
     });
 
     this.instance.on('close', function clear(code, reason) {
-        console.log(this.clientId + "Websocket closed. Code: " + code);
+        console.log(that.clientId + "Websocket closed. Code: " + code);
         switch (code) { // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
             case 1000: //  1000 indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
-                console.log(this.clientId + "WebSocket: closed");
+                console.log(that.clientId + "WebSocket: closed");
                 break;
             case 1006: //Close Code 1006 is a special code that means the connection was closed abnormally (locally) by the browser implementation.	
-                console.log(this.clientId + "WebSocket: closed abnormally");
+                console.log(that.clientId + "WebSocket: closed abnormally");
                 //debugger;
                 that.reconnect(code);
                 break;
             default: // Abnormal closure
                 //debugger;
-                console.log(this.clientId + "WebSocket: closed unknown");
+                console.log(that.clientId + "WebSocket: closed unknown");
                 that.reconnect(code);
                 break;
         }
@@ -151,12 +151,11 @@ WebSocketClient.prototype.open = function(url) {
         console.error(e);
         switch (e.code) {
             case 'ECONNREFUSED':
-                console.log(this.clientId + "Error ECONNREFUSED. Server is not accepting connections");
+                console.error(this.clientId + "Error ECONNREFUSED. Server is not accepting connections");
                 that.reconnect(e);
                 break;
             default:
-                console.log(this.clientId + "UNKNOWN ERROR");
-                that.onerror(e);
+                console.error(this.clientId + "UNKNOWN ERROR");
                 break;
         }
     });
@@ -169,7 +168,7 @@ WebSocketClient.prototype.msgId = function(){ // msg ID incrementer
 
 WebSocketClient.prototype.send = function(data, option) {
     try {
-        console.log('\x1b[33m%s\x1b[0m', this.clientId + " Sending no." + this.ocppMessageCounter + " data to CS: " + JSON.stringify(data));
+        console.log(this.clientId + " Sending no." + this.ocppMessageCounter + " data to CS: " + JSON.stringify(data));
         this.instance.send(data, option);
     } catch (e) {
         this.instance.emit('error', e);
