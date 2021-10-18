@@ -2,50 +2,73 @@
 
 # Install 
 
-1. Download [Node.js](https://nodejs.org/en/download/) 
+1. Download [Node.js](https://nodejs.org/en/download/). You can use  
 
 2. Goto root folder of repo (where packages.json file is present) and install required NPM packages
 
 ```bash
 npm install
 ```
-
-##  Start server
+# To start server
 
 Open shell in root folder and start server
-
 ```bash
-node ocpp-central-cystem-server.js
+npm run start-server
 ```
 
-### Some general info on inner flow
+# To start client
+
+Open shell in root folder and start server
+```bash
+npm run start-client
+```
+
+# Some general info on inner flow
+
+## Server
 
 1. Servers accepts client conections and upgrades them to websocket protocol
 2. It responds to various OCPP messages
 3. Ocasionally it send PING / PONG to determine which clients are still alive
 
-##  Starting  clients
-
-Open shell in root folder and start client
-
-```bash
-node ocpp-chargepoint-client.js
-```
-
-### Environment variables that client script uses
-
-1. **CS_PROTOCOL** defaults to **ws**. possible values are: ws, wss (for SSL)
-2. **CS_HOST** defaults to **localhost**. host to connect to
-3. **CS_PORT** defaults to **8080**. port to connect to
-4. **CONCURRENCY_LEVEL** defaults to 1. Number of clients to create
-
-### Some general info on inner flow
+## Client
 
 1. When client connects with websocket, it sends boot notification. 
 2. After response is recevied, it reads heartbeat interval from it
 3. it send heartbeat message according to interval
 
+# Environment variables
+
+## Environment variables that client script uses
+
+1. **CS_PROTOCOL** defaults to **ws**. possible values are: ws, wss (for SSL)
+2. **CS_HOST** defaults to **localhost**. host to connect to
+3. **CS_PORT** defaults to **8080**. port to connect to
+4. **CONCURRENCY_LEVEL** defaults to 1. Number of clients to create
+5. **LOG_PAYLOAD**  verbose logging of data exchange between client and server
+6. **LOG_LIFECYCLE** = log lifecyle events (connect, reconnect, pingpong)
+
+## Environment variables that server script uses
+
+1. **WEB_SRV_HOST** interface to bind to (could be only one)
+2. **WEB_SRV_PORT** port on bind interface
+3. **HEARTBEAT_INT_MS** interval in which we check client if its still connected
+4. **LOG_PAYLOAD**  verbose logging of data exchange between client and server
+5. **LOG_LIFECYCLE** = log lifecyle events (connect, reconnect, pingpong)
+
 # Debugging
+
+## Manually start server
+
+```bash
+node ocpp-central-cystem-server.js
+```
+
+## Manually start client 
+```bash
+node ocpp-chargepoint-client.js
+```
+## Debug with debugger
 
 1. Install extension for debugging in chrome browser
 
@@ -63,24 +86,10 @@ node --inspect-brk ocpp-chargepoint-client.js
 
 4. After a few seconds you should see Target upgradeServer.js on your chrome tab. Click on inspect link and new DevTools window will appear with source code.
 
-# Using utility scripts
-
-## To start server
-
-```bash
-npm run start-server
-```
-
-## To start client
-
-```bash
-npm run start-client
-```
 
 # Literature
 
-## Node.js Websocket NPM package
+Node.js Websocket NPM package
 
 [node ws ](https://github.com/websockets/ws/)
-
 [node ws test](https://github.com/websockets/ws/blob/master/test/websocket.test.js)
