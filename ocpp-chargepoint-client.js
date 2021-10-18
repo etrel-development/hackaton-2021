@@ -1,7 +1,7 @@
 'use strict';
 
 const WebSocket = require('ws');
-const CONSTANTS = require('./const.js')
+const UTILS = require('./utils.js')
 
 // Connection settings
 const OPENING_HANDSHAKE_TIMEOUT_MS = 30 * 1000; // wait time for protocol upgrade call
@@ -12,14 +12,14 @@ const OCPP_HEARTBEAT_INTERVAL_OVERRIDE_MS = null; //  override hb interval set b
 const CS_PROTOCOL = process.env.CS_PROTOCOL ? process.env.CS_PROTOCOL : "ws"; // use wss for SSL
 const CS_HOST = process.env.CS_HOST ? process.env.CS_HOST : "localhost";  // central system host
 const CS_PORT = process.env.CS_PORT ? process.env.CS_PORT : 8080;  // port
-const CONCURRENCY_LEVEL = process.env.CONCURRENCY_LEVEL ? process.env.CONCURRENCY_LEVEL : 1;  // one client by default
+const CONCURRENCY_LEVEL = process.env.CONCURRENCY_LEVEL ? process.env.CONCURRENCY_LEVEL : 2;  // one client by default
 
-function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
+const LOG_PAYLOAD = process.env.LOG_PAYLOAD ? process.env.LOG_PAYLOAD : false;  // data exchange verbose logging
+const LOG_LIFECYCLE = process.env.LOG_LIFECYCLE ? process.env.LOG_LIFECYCLE : true;  // lifecyle events (connect, reconnect, pingpong)
+
+// setup logging library
+UTILS.Logging.EnablePayloadLogging = LOG_PAYLOAD;
+UTILS.Logging.EnableLifecycleLogging = LOG_LIFECYCLE;
 
 function WebSocketClient(cId) {
     this.clientId = cId;
@@ -46,8 +46,9 @@ WebSocketClient.prototype.open = function(url) {
 
     // NOTE: we are not using ping / pong functionality on our
     this.instance.on('ping', function() {
-        //debugger;
-        console.log(that.clientId + " - Received PING");
+        
+        UTILS.Fn.log(`Client ${that.clientId} received PING`);
+
         clearTimeout(this.pingTimeout);
 
         // Use `WebSocket#terminate()`, which immediately destroys the connection,
@@ -56,18 +57,17 @@ WebSocketClient.prototype.open = function(url) {
         // sends out pings plus a conservative assumption of the latency.
         this.pingTimeout = setTimeout(() => {
             debugger;
-            console.log(that.clientId +  " - Disconected from server");
-            that.terminate();
+            UTILS.Fn.log(`Client ${that.clientId} disconected from server`);            
+            this.terminate();
         }, 30000 + 1000);
     });
 
     this.instance.on('pong', function() { // this is issued if client sends ping
-        console.log("Event pong");
+        UTILS.Fn.lifecyc("Event pong");
     });
 
     this.instance.on('open', function open() {
         //debugger;
-        console.log(that.clientId + " - connect ok - will send BOOT notification now");
         
         let bootNotificationRequest = {
             chargeBoxIdentity: CP_ID,
@@ -82,10 +82,10 @@ WebSocketClient.prototype.open = function(url) {
             meterType: ""
         };
 
-        let bootNotifiPayload = JSON.stringify([CONSTANTS.OcppCallType.ClientToServer, that.msgId(), "BootNotification", bootNotificationRequest]);
-        console.log('\x1b[33m%s\x1b[0m', "Sending no." + this.ocppMessageCounter + " data to CS: " + bootNotifiPayload);
+        let bootNotifiPayload = JSON.stringify([UTILS.OcppCallType.ClientToServer, that.msgId(), "BootNotification", bootNotificationRequest]);
 
-        //debugger;
+        UTILS.Fn.data(`Client ${that.clientId} sending bot notification`, bootNotifiPayload);
+
         // this is websocket object  (this.instance) and not our WebSocketClient prototype!!
         this.send(bootNotifiPayload);
 
@@ -94,10 +94,16 @@ WebSocketClient.prototype.open = function(url) {
     this.instance.on('message', function incoming(data) {
         //debugger; 
         
-        console.log('\x1b[33m%s\x1b[0m', "Message received: ");
-        console.log(data);
-        
-        let msgArr = JSON.parse(data);
+        UTILS.Fn.data(`Client ${that.clientId} message received`, data);
+
+        let msgArr;
+        try {
+            msgArr = JSON.parse(data);
+        } catch(e) {
+            UTILS.Fn.err("Error parsing incoming json message");
+            return false;
+        }
+
         let t = new Date();
         
         // in boot notification we receive interval for heartbeat
@@ -107,39 +113,35 @@ WebSocketClient.prototype.open = function(url) {
                 OCPP_HEARTBEAT_INTERVAL_OVERRIDE_MS != null ?
                 OCPP_HEARTBEAT_INTERVAL_OVERRIDE_MS :
                 msgArr[2]["interval"] * 1000;
-
-            console.log(that.clientId + " OCPP heartbeat interval suggested by CS: " + msgArr[2]["interval"]);
-            console.log(that.clientId + " Next interval will be at: " + new Date(t.setSeconds(t.getSeconds() + this.ocppHeartBeatIntervalMs/1000)));
+            
+            UTILS.Fn.lifecyc(`Client ${that.clientId} Next interval will be at: ` + new Date(t.setSeconds(t.getSeconds() + this.ocppHeartBeatIntervalMs/1000)));
 
             this.ocppHeartBeatInterval = setInterval(function(){
 
-                that.send(JSON.stringify([CONSTANTS.OcppCallType.ClientToServer, that.msgId(), "Heartbeat", {}])); // ocpp heartbeat request
+                that.send(JSON.stringify([UTILS.OcppCallType.ClientToServer, that.msgId(), "Heartbeat", {}])); // ocpp heartbeat request
 
             }, this.ocppHeartBeatIntervalMs);
 
         }
         else{
-            console.error("Do not know what to do with following received message")
-            console.log(data)   
+            UTILS.Fn.warn("Do not know what to do with following received message");
         }
-
 
     });
 
     this.instance.on('close', function clear(code, reason) {
-        console.log(this.clientId + "Websocket closed. Code: " + code);
         switch (code) { // https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
             case 1000: //  1000 indicates a normal closure, meaning that the purpose for which the connection was established has been fulfilled.
-                console.log(this.clientId + "WebSocket: closed");
+                UTILS.Fn.err(`Client ${that.clientId} - WebSocket: closed, code ${code}`);
                 break;
             case 1006: //Close Code 1006 is a special code that means the connection was closed abnormally (locally) by the browser implementation.	
-                console.log(this.clientId + "WebSocket: closed abnormally");
-                //debugger;
+                UTILS.Fn.err(`Client ${that.clientId} - WebSocket: closed abnormally, code ${code}`);
+                debugger;
                 that.reconnect(code);
                 break;
             default: // Abnormal closure
-                //debugger;
-                console.log(this.clientId + "WebSocket: closed unknown");
+                debugger;
+                UTILS.Fn.err(`Client ${that.clientId} WebSocket: closed unknown, code ${code}`);
                 that.reconnect(code);
                 break;
         }
@@ -148,15 +150,13 @@ WebSocketClient.prototype.open = function(url) {
     });
 
     this.instance.on('error', function(e) {
-        console.error(e);
         switch (e.code) {
             case 'ECONNREFUSED':
-                console.log(this.clientId + "Error ECONNREFUSED. Server is not accepting connections");
+                UTILS.Fn.err(`Client ${that.clientId} - Error ECONNREFUSED. Server is not accepting connections`);
                 that.reconnect(e);
                 break;
             default:
-                console.log(this.clientId + "UNKNOWN ERROR");
-                that.onerror(e);
+                UTILS.Fn.err(`Client ${that.clientId} UNKNOWN ERROR`, e);
                 break;
         }
     });
@@ -169,7 +169,7 @@ WebSocketClient.prototype.msgId = function(){ // msg ID incrementer
 
 WebSocketClient.prototype.send = function(data, option) {
     try {
-        console.log('\x1b[33m%s\x1b[0m', this.clientId + " Sending no." + this.ocppMessageCounter + " data to CS: " + JSON.stringify(data));
+        UTILS.Fn.data(`Client ${this.clientId} sending data to CS: ` , data);
         this.instance.send(data, option);
     } catch (e) {
         this.instance.emit('error', e);
@@ -178,13 +178,13 @@ WebSocketClient.prototype.send = function(data, option) {
 
 WebSocketClient.prototype.reconnect = function(e) {
     var that = this;
-    console.log(`WebSocketClient: retry in ${this.autoReconnectInterval}ms`, e);
+    UTILS.Fn.lifecyc(`Client ${this.clientId} - WebSocketClient: retry in ${this.autoReconnectInterval}ms`);
     this.instance.removeAllListeners();
     clearInterval(this.ocppHeartBeatInterval);
     
     setTimeout(function() {
         
-        console.log("WebSocketClient retry reconnecting ...");
+        UTILS.Fn.lifecyc(`Client ${this.clientId} -WebSocketClient retry reconnecting ...`);
         that.open(that.url);
 
     }, this.autoReconnectInterval);
@@ -197,9 +197,10 @@ var CP_ID, URL, wsc;
 for (let clientIdx=0; clientIdx<CONCURRENCY_LEVEL; clientIdx++){
 
     // build chargepoint identity - required by protocol 
-    CP_ID = 'SI-' + uuidv4(); // required by protocol 
+    CP_ID = 'SI-' + UTILS.Fn.uuidv4(); // required by protocol 
     URL = `${CS_PROTOCOL}://${CS_HOST}:${CS_PORT}/${CP_ID}?cid=${clientIdx}`; // central system url
-    console.log(clientIdx + " - Trying to connect to: " + URL);
+    
+    UTILS.Fn.lifecyc("Client is trying to connect to: " + URL);
     
     // create a client
     wsc = new WebSocketClient(clientIdx);
