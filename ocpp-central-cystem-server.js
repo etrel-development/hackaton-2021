@@ -1,8 +1,6 @@
 'use strict';
 
-const LOG_PAYLOADS = true;
-
-var CONSTANTS = require('./const.js');
+var UTILS = require('./utils.js');
 const http = require('http');
 const WebSocket = require('ws');
 const url = require('url');
@@ -12,17 +10,19 @@ const wsServer = new WebSocket.Server( // represents websocket server
 ); 
 
 // env variable
-const WEB_SRV_HOST = 'localhost';  // interface to bind to (could be only one)
-const WEB_SRV_PORT = 8080; // port on interface
+const WEB_SRV_HOST = process.env.WEB_SRV_HOST ? process.env.WEB_SRV_HOST : 'localhost';  // interface to bind to (could be only one)
+const WEB_SRV_PORT = process.env.WEB_SRV_PORT ? process.env.WEB_SRV_PORT : 8080;  // port on bind interface
+const HEARTBEAT_INT_MS = process.env.HEARTBEAT_INT_MS ? process.env.HEARTBEAT_INT_MS : 30000;  // interval in which we check client if its still connected
+const LOG_PAYLOAD = process.env.LOG_PAYLOAD ? process.env.LOG_PAYLOAD : false;  // data exchange verbose logging
+const LOG_LIFECYCLE = process.env.LOG_LIFECYCLE ? process.env.LOG_LIFECYCLE : true;  // lifecyle events (connect, reconnect, pingpong)
 
-const HEARTBEAT_INT_MS = 30000; // check client is still connected
-
-// same codetable as driver 
-const WS_READY_STATE = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };
+// setup logging library
+UTILS.Logging.EnablePayloadLogging = LOG_PAYLOAD;
+UTILS.Logging.EnableLifecycleLogging = LOG_LIFECYCLE;
 
 function noop() {}
 
-// dummy authentication
+/** dummy authentication */
 function authenticate(request, cbAuthenticated) {
     if (request.headers['sec-websocket-protocol'] !== 'ocpp1.6'){
         cbAuthenticated("Connection denied");
@@ -34,25 +34,36 @@ function authenticate(request, cbAuthenticated) {
 wsServer.on('connection', function connection(webSocket, req) {
 
     // websocket represent client websocket; ie socket connected to client. connection is bidirectional
-
+    
     var statInt;
     
-    console.log('Connected from: ' + req.url);
+    UTILS.Fn.lifecyc(`Connected from: ${req.url}`);
 
     // define manual propety on webSocket object to track liveliness
     webSocket.isAlive = true;
     
     webSocket.on('pong', function(){ // register handler, when client respons with PONG
-        console.log("Received heartbeat PONG")
+
+        UTILS.Fn.log(`Received heartbeat PONG`);
+
         this.isAlive = true;
     }); 
 
     webSocket.on('message', function incoming(message) { // recive msg from client
         debugger;
+
+        UTILS.Fn.data('Received: ', message);
         
-        LOG_PAYLOADS && console.log('Received: ', message);
-        
-        let ocppMsg = JSON.parse(message), msgNum = parseInt(ocppMsg[1], 16), msgType = ocppMsg[2];
+        let ocppMsg;
+        try {
+            ocppMsg = JSON.parse(message);
+        } catch(e) {
+            UTILS.Fn.err("Error parsing incoming json message");
+            return false;
+        }
+
+        let msgNum = parseInt(ocppMsg[1], 16), msgType = ocppMsg[2];
+
         let d = new Date(); 
         var datestring = ("0" + d.getDate()).slice(-2) + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + d.getFullYear() + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
 
@@ -61,24 +72,24 @@ wsServer.on('connection', function connection(webSocket, req) {
             
             // send back ocpp heartbeat response. You just send back time
             webSocket.send(
-                JSON.stringify([CONSTANTS.OcppCallType.ServerToClient, ocppMsg[1], { "currentTime": datestring } ])
+                JSON.stringify([UTILS.OcppCallType.ServerToClient, ocppMsg[1], { "currentTime": datestring } ])
             ); 
 
         }else if (msgType.toLowerCase() === "BootNotification".toLowerCase()){
 
             // confirm bo0t notification - send back ocpp boot notification response
             webSocket.send(
-                JSON.stringify([CONSTANTS.OcppCallType.ServerToClient, ocppMsg[1], { "status": "Accepted", "currentTime": datestring, "interval": 300 }  ])
+                JSON.stringify([UTILS.OcppCallType.ServerToClient, ocppMsg[1], { "status": "Accepted", "currentTime": datestring, "interval": 300 }  ])
             ); 
         }
         else{
-            console.warn("Skiping message type: " + msgType);
+            UTILS.Fn.warn(`Skiping message type: ${msgType}`);
         }
 
     });
 
     webSocket.on('close', function close() {
-       console.log('client connection closed'); 
+        UTILS.Fn.lifecyc('client connection closed'); 
     });
 
 });
@@ -101,7 +112,7 @@ server.on('upgrade', function upgrade(request, socket, head) {
             return;
         }
 
-        console.log("Upgrading request for chargepoint " + chargepointId);
+        UTILS.Fn.lifecyc(`Upgrading request for chargepoint ${chargepointId}`);
         
         wsServer.handleUpgrade(request, socket, head, function done(webSocket) {
             wsServer.emit('connection', webSocket, request);
@@ -133,10 +144,11 @@ const intervalHeartbeat = setInterval(function ping() {
     // notvery sufficient, but only way - iteration through internal structure
     wsServer.clients.forEach(function each(wsClient) {
         if (wsClient.isAlive === false){ // not reachable any more
-            console.log("Terminating nonreachable client");
+            UTILS.Fn.lifecyc("Terminating nonreachable client");
             return wsClient.terminate();
         }
-        console.log("Trigering ping to client: " + logClient(wsClient));
+
+        UTILS.Fn.lifecyc("Trigering ping to client: " + logClient(wsClient));
         wsClient.isAlive = false; // set to false, heartbeat handler will set it to true
         wsClient.ping(noop); // trigger event   
     });
