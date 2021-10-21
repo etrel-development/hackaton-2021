@@ -4,7 +4,7 @@ const WebSocket = require('ws');
 const UTILS = require('./utils.js')
 
 // Connection settings
-const OPENING_HANDSHAKE_TIMEOUT_MS = 30 * 1000; // wait time for protocol upgrade call
+const OPENING_HANDSHAKE_TIMEOUT_MS = 120 * 1000; // wait time for protocol upgrade call
 const AUTO_RECONNECT_INTERVAL_MS = 90 * 1000; // in case of connection lost, use this settings
 const OCPP_HEARTBEAT_INTERVAL_OVERRIDE_MS = null; //  override hb interval set by CS 
 
