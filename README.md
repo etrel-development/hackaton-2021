@@ -4,7 +4,7 @@
 
 1. Download [Node.js](https://nodejs.org/en/download/). You can use  
 
-2. Goto root folder of repo (where packages.json file is present) and install required NPM packages
+2. Goto root folder of repo (where packages.json file is present) and install required NPM packages with:
 
 ```bash
 npm install
@@ -22,6 +22,12 @@ Open shell in root folder and start server
 ```bash
 npm run start-client
 ```
+
+# Start under docker 
+
+Attached **Dockerfile** demonstrates procedure for starting node application with docker. Important point is to install packages with node package manager (npm), copy source file over and then use custom scripts defined inside package.json to start node via npm. 
+
+Another approach can be used if you like. 
 
 # Some general info on inner flow
 
@@ -85,11 +91,3 @@ node --inspect-brk ocpp-chargepoint-client.js
 ```
 
 4. After a few seconds you should see Target upgradeServer.js on your chrome tab. Click on inspect link and new DevTools window will appear with source code.
-
-
-# Literature
-
-Node.js Websocket NPM package
-
-[node ws ](https://github.com/websockets/ws/)
-[node ws test](https://github.com/websockets/ws/blob/master/test/websocket.test.js)
