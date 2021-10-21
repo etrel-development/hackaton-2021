@@ -123,9 +123,9 @@ WebSocketClient.prototype.open = function(url) {
             }, this.ocppHeartBeatIntervalMs);
 
         }
-        else{
+        /*else{
             UTILS.Fn.warn("Do not know what to do with following received message");
-        }
+        }*/
 
     });
 
